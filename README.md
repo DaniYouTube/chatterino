@@ -11,5 +11,9 @@ There's way too much shit left to do:
  - [ ] Make Docker image and `docker-compose` to test system with multiple nodes/replicas.
  - [ ] Chat history via web (plain text, **no fancy shit here**).
  
+ # Usage
+ Connect via telnet
+ `telnet 127.0.0.1 3000`
+ 
  # License
  Do the fuck you want with this shit
