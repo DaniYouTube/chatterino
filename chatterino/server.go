@@ -47,6 +47,30 @@ func randomSha1(addr string) string {
 	return rawHash[:len(rawHash)-1]
 }
 
+func (srv *ChatServer) handleMessages() {
+	for {
+		msg := <-srv.messages
+		rawMsg := []byte(msg)
+
+		for conn, id := range srv.clients {
+			if _, err := conn.Write(rawMsg); err != nil {
+				fmt.Printf("error sending %q to user id %d (%s): %s\n", msg, id, conn.RemoteAddr().String(), err)
+			}
+		}
+		fmt.Printf("[CHAT] %s", msg)
+	}
+}
+
+func (srv *ChatServer) acceptConns(ln *net.Listener) {
+	for {
+		conn, err := (*ln).Accept()
+		if err != nil {
+			fmt.Printf("couldn't accept new conn: %v\n", err)
+		}
+		srv.newConns <- conn
+	}
+}
+
 func (srv *ChatServer) Listen(addr string) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -54,28 +78,8 @@ func (srv *ChatServer) Listen(addr string) error {
 	}
 	fmt.Printf("chatterino started listening on %s!\n", addr)
 
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				fmt.Printf("couldn't accept new conn: %v\n", err)
-			}
-			srv.newConns <- conn
-		}
-	}()
-	go func() {
-		for {
-			msg := <-srv.messages
-			rawMsg := []byte(msg)
-
-			for conn, id := range srv.clients {
-				if _, err := conn.Write(rawMsg); err != nil {
-					fmt.Printf("error sending %q to user id %d (%s): %s\n", msg, id, conn.RemoteAddr().String(), err)
-				}
-			}
-			fmt.Printf("[CHAT] %s", msg)
-		}
-	}()
+	go srv.acceptConns(&ln)
+	go srv.handleMessages()
 
 	for {
 		select {
