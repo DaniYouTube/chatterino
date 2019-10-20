@@ -24,6 +24,8 @@ type ChatServer struct {
 
 	quit chan os.Signal
 
+	last int
+
 	mu sync.Mutex
 }
 
@@ -52,11 +54,13 @@ func (srv *ChatServer) handleMessages() {
 		msg := <-srv.messages
 		rawMsg := []byte(msg)
 
+		srv.mu.Lock()
 		for conn, id := range srv.clients {
 			if _, err := conn.Write(rawMsg); err != nil {
 				fmt.Printf("error sending %q to user id %d (%s): %s\n", msg, id, conn.RemoteAddr().String(), err)
 			}
 		}
+		srv.mu.Unlock()
 		fmt.Printf("[CHAT] %s", msg)
 	}
 }
@@ -86,6 +90,7 @@ func (srv *ChatServer) Listen(addr string) error {
 		case conn := <-srv.newConns:
 			id := randomSha1(conn.RemoteAddr().String())
 
+			// block mutex to avoid data race on conn & id storing
 			srv.mu.Lock()
 			srv.clients[conn] = id
 			srv.mu.Unlock()
@@ -106,7 +111,6 @@ func (srv *ChatServer) Listen(addr string) error {
 			srv.messages <- fmt.Sprintf("Hit the dabs for %s, who just joined Chatterino! \\o> <o/"+ChatEOL, id)
 			break
 
-
 		case deadConn := <-srv.deadConns:
 			id := srv.clients[deadConn]
 
@@ -120,6 +124,7 @@ func (srv *ChatServer) Listen(addr string) error {
 			break
 
 		case <-srv.quit:
+			srv.messages <- "Bye...! Chatterino is being shutdown..." + ChatEOL
 			return ln.Close()
 		}
 	}
