@@ -26,7 +26,7 @@ type ChatServer struct {
 
 	last int
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func NewServer() *ChatServer {
@@ -54,13 +54,13 @@ func (srv *ChatServer) handleMessages() {
 		msg := <-srv.messages
 		rawMsg := []byte(msg)
 
-		srv.mu.Lock()
+		srv.mu.RLock()
 		for conn, id := range srv.clients {
 			if _, err := conn.Write(rawMsg); err != nil {
 				fmt.Printf("error sending %q to user id %d (%s): %s\n", msg, id, conn.RemoteAddr().String(), err)
 			}
 		}
-		srv.mu.Unlock()
+		srv.mu.RUnlock()
 		fmt.Printf("[CHAT] %s", msg)
 	}
 }
