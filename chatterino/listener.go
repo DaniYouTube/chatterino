@@ -35,16 +35,24 @@ func (srv *ChatServer) readMessages(conn *net.Conn, id string) {
 }
 
 func (srv *ChatServer) handleConnections(ln *net.Listener) error {
-	go func(ln *net.Listener) {
+	done := make(chan bool, 1)
+
+	go func() {
 		for {
-			conn, err := (*ln).Accept()
-			if err != nil {
-				fmt.Printf("couldn't accept new conn: %v\n", err)
-				continue
+			select {
+			case <-done:
+				return
+			default:
+				conn, err := (*ln).Accept()
+				if err != nil {
+					fmt.Printf("couldn't accept new conn: %v\n", err)
+					continue
+				}
+				srv.newConns <- conn
+				break
 			}
-			srv.newConns <- conn
 		}
-	}(ln)
+	}()
 
 	for {
 		select {
@@ -75,6 +83,7 @@ func (srv *ChatServer) handleConnections(ln *net.Listener) error {
 
 		case <-srv.quit:
 			srv.messages <- "Bye...! Chatterino is being shutdown..." + ChatEOL
+			done <- true
 			return (*ln).Close()
 		}
 	}
