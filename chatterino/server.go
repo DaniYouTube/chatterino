@@ -24,8 +24,6 @@ type ChatServer struct {
 
 	quit chan os.Signal
 
-	last int
-
 	mu sync.RWMutex
 }
 
