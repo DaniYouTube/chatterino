@@ -40,6 +40,7 @@ func (srv *ChatServer) handleConnections(ln *net.Listener) error {
 			conn, err := (*ln).Accept()
 			if err != nil {
 				fmt.Printf("couldn't accept new conn: %v\n", err)
+				continue
 			}
 			srv.newConns <- conn
 		}
